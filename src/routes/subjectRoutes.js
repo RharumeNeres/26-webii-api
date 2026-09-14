@@ -1,17 +1,14 @@
-import {Router} from "express";
+import { Router } from "express";
 
 import {
-  createSubject,
-  getSubjects,
+  listarMaterias,
   getSubjectById
 } from "../controllers/subjectController.js";
 
-const router=Router();
+const router = Router();
 
-router.post("/",createSubject);
+router.get("/", listarMaterias);
 
-router.get("/",getSubjects);
-
-router.get("/:id",getSubjectById);
+router.get("/:id", getSubjectById);
 
 export default router;

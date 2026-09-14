@@ -1,9 +1,10 @@
 info:
   name: Listar matérias
   type: http
-  seq: 3
+  seq: 6
   tags:
-    - atividade-03
+    - aula-03
+    - aula-04
 
 http:
   method: GET

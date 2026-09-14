@@ -1,217 +1,184 @@
 import prisma from "../config/database.js";
 
-export async function createQuestion(req,res){
-  try{
+const publicUserSelect = {
+  id: true,
+  nome: true,
+  email: true,
+  papel: true,
+  foto: true,
+};
+
+const publicSubjectSelect = {
+  id: true,
+  nome: true,
+  ativa: true,
+};
+
+function toPositiveInt(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+export const create = async (req, res) => {
+  try {
     const {
       enunciado,
       dificuldade,
       respostaCorreta,
-      disciplinaId,
-      autorId,
-      ativa
-    }=req.body;
+      subjectId,
+      authorId,
+      ativa,
+    } = req.body;
+    const subjectIdNumber = toPositiveInt(subjectId);
+    const authorIdNumber = toPositiveInt(authorId);
+    const difficultyNumber = Number(dificuldade);
 
-    if(!enunciado||!dificuldade||!disciplinaId||!autorId){
+    if (
+      typeof enunciado !== "string" ||
+      !enunciado.trim() ||
+      !subjectIdNumber ||
+      !authorIdNumber ||
+      !Number.isInteger(difficultyNumber) ||
+      difficultyNumber < 1 ||
+      difficultyNumber > 3
+    ) {
       return res.status(400).json({
-        success:false,
-        message:"Enunciado, dificuldade, disciplinaId e autorId são obrigatórios",
+        success: false,
+        message:
+          "Enunciado, dificuldade entre 1 e 3, subjectId e authorId válidos são obrigatórios",
       });
     }
 
-    const disciplina=await prisma.subject.findUnique({
-      where:{
-        id:Number(disciplinaId),
-      },
+    const subject = await prisma.subject.findUnique({
+      where: { id: subjectIdNumber },
+      select: { id: true },
     });
 
-    if(!disciplina){
+    if (!subject) {
       return res.status(404).json({
-        success:false,
-        message:"Matéria não encontrada",
+        success: false,
+        message: `Matéria com ID ${subjectIdNumber} não encontrada`,
       });
     }
 
-    const autor=await prisma.user.findUnique({
-      where:{
-        id:Number(autorId),
-      },
+    const author = await prisma.user.findUnique({
+      where: { id: authorIdNumber },
+      select: { id: true },
     });
 
-    if(!autor){
+    if (!author) {
       return res.status(404).json({
-        success:false,
-        message:"Autor não encontrado",
+        success: false,
+        message: `Autor com ID ${authorIdNumber} não encontrado`,
       });
     }
 
-    const questao=await prisma.question.create({
-      data:{
-        enunciado,
-        dificuldade:Number(dificuldade),
-        respostaCorreta:respostaCorreta||null,
-        disciplinaId:Number(disciplinaId),
-        autorId:Number(autorId),
-        ativa:ativa===undefined?true:ativa,
+    const novaQuestao = await prisma.question.create({
+      data: {
+        enunciado: enunciado.trim(),
+        dificuldade: difficultyNumber,
+        respostaCorreta: respostaCorreta?.trim() || null,
+        subjectId: subjectIdNumber,
+        authorId: authorIdNumber,
+        ativa: ativa ?? true,
       },
-      include:{
-        disciplina:{
-          select:{
-            id:true,
-            nome:true,
-            ativa:true,
-          },
-        },
-        autor:{
-          select:{
-            id:true,
-            nome:true,
-            email:true,
-            papel:true,
-            foto:true,
-          },
-        },
+      select: {
+        id: true,
+        enunciado: true,
+        dificuldade: true,
+        respostaCorreta: true,
+        ativa: true,
+        createdAt: true,
+        subject: { select: publicSubjectSelect },
+        author: { select: publicUserSelect },
       },
     });
 
     return res.status(201).json({
-      success:true,
-      data:{
-        id:questao.id,
-        enunciado:questao.enunciado,
-        dificuldade:questao.dificuldade,
-        respostaCorreta:questao.respostaCorreta,
-        ativa:questao.ativa,
-        createdAt:questao.createdAt,
-        updatedAt:questao.updatedAt,
-        subject:questao.disciplina,
-        author:questao.autor,
-      },
+      success: true,
+      message: "Questão criada com sucesso",
+      data: novaQuestao,
     });
-  }catch(error){
-    console.error("Erro ao criar questão:",error);
-
+  } catch (error) {
+    console.error("Erro ao criar questão:", error);
     return res.status(500).json({
-      success:false,
-      message:"Erro ao criar questão",
+      success: false,
+      message: "Erro ao criar questão",
     });
   }
-}
+};
 
-export async function getQuestions(req,res){
-  try{
-    const questoes=await prisma.question.findMany({
-      select:{
-        id:true,
-        enunciado:true,
-        dificuldade:true,
-        respostaCorreta:true,
-        ativa:true,
-        createdAt:true,
-        updatedAt:true,
-        disciplina:{
-          select:{
-            id:true,
-            nome:true,
-            ativa:true,
-          },
-        },
-        autor:{
-          select:{
-            id:true,
-            nome:true,
-            email:true,
-            papel:true,
-            foto:true,
-          },
-        },
+export const getAll = async (_req, res) => {
+  try {
+    const questoes = await prisma.question.findMany({
+      select: {
+        id: true,
+        enunciado: true,
+        dificuldade: true,
+        respostaCorreta: true,
+        ativa: true,
+        createdAt: true,
+        subject: { select: publicSubjectSelect },
+        author: { select: publicUserSelect },
       },
-      orderBy:{
-        id:"asc",
-      },
+      orderBy: { createdAt: "desc" },
     });
-
-    const questoesFormatadas=questoes.map((questao)=>({
-      id:questao.id,
-      enunciado:questao.enunciado,
-      dificuldade:questao.dificuldade,
-      respostaCorreta:questao.respostaCorreta,
-      ativa:questao.ativa,
-      createdAt:questao.createdAt,
-      updatedAt:questao.updatedAt,
-      subject:questao.disciplina,
-      author:questao.autor,
-    }));
 
     return res.status(200).json({
-      success:true,
-      data:questoesFormatadas,
-      total:questoesFormatadas.length,
+      success: true,
+      data: questoes,
+      total: questoes.length,
     });
-  }catch(error){
-    console.error("Erro ao buscar questões:",error);
-
+  } catch (error) {
+    console.error("Erro ao listar questões:", error);
     return res.status(500).json({
-      success:false,
-      message:"Erro ao buscar questões",
+      success: false,
+      message: "Erro ao listar questões",
     });
   }
-}
+};
 
-export async function getQuestionById(req,res){
-  try{
-    const id=Number(req.params.id);
+export const getById = async (req, res) => {
+  try {
+    const questionId = toPositiveInt(req.params.id);
 
-    const questao=await prisma.question.findUnique({
-      where:{
-        id,
-      },
-      include:{
-        disciplina:{
-          select:{
-            id:true,
-            nome:true,
-            ativa:true,
-          },
-        },
-        autor:{
-          select:{
-            id:true,
-            nome:true,
-            email:true,
-            papel:true,
-            foto:true,
-          },
-        },
+    if (!questionId) {
+      return res.status(400).json({
+        success: false,
+        message: "ID inválido. Deve ser um número inteiro positivo",
+      });
+    }
+
+    const questao = await prisma.question.findUnique({
+      where: { id: questionId },
+      select: {
+        id: true,
+        enunciado: true,
+        dificuldade: true,
+        respostaCorreta: true,
+        ativa: true,
+        createdAt: true,
+        subject: { select: publicSubjectSelect },
+        author: { select: publicUserSelect },
       },
     });
 
-    if(!questao){
+    if (!questao) {
       return res.status(404).json({
-        success:false,
-        message:"Questão não encontrada",
+        success: false,
+        message: `Questão com ID ${questionId} não encontrada`,
       });
     }
 
     return res.status(200).json({
-      success:true,
-      data:{
-        id:questao.id,
-        enunciado:questao.enunciado,
-        dificuldade:questao.dificuldade,
-        respostaCorreta:questao.respostaCorreta,
-        ativa:questao.ativa,
-        createdAt:questao.createdAt,
-        updatedAt:questao.updatedAt,
-        subject:questao.disciplina,
-        author:questao.autor,
-      },
+      success: true,
+      data: questao,
     });
-  }catch(error){
-    console.error("Erro ao buscar questão:",error);
-
+  } catch (error) {
+    console.error("Erro ao buscar questão:", error);
     return res.status(500).json({
-      success:false,
-      message:"Erro ao buscar questão",
+      success: false,
+      message: "Erro ao buscar questão",
     });
   }
-}
+};

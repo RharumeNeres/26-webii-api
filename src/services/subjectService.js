@@ -8,12 +8,6 @@ const publicUserSelect = {
   foto: true,
 };
 
-const subjectSelect = {
-  id: true,
-  nome: true,
-  ativa: true,
-};
-
 export const getAllSubjects = async () => {
   return prisma.subject.findMany({
     select: {

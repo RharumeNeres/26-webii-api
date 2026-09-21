@@ -14,3 +14,6 @@ export const positiveIdSchema = numericInputSchema.pipe(
     .positive("ID deve ser positivo")
     .max(2147483647, "ID excede o limite do banco"),
 );
+export const idParamSchema = z.object({
+  id: positiveIdSchema,
+});

@@ -28,7 +28,7 @@ router.patch(
     if (req.file && Object.keys(req.body || {}).length === 0) {
       return next();
     }
-    
+
     return validate(updateUserV2Schema)(req, res, next);
   },
   userController.update,

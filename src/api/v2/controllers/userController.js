@@ -37,11 +37,11 @@ export async function getById(req, res, next) {
 export async function update(req, res, next) {
   try {
     const data = await userService.updateUser(
-  req.params.id,
-  req.body,
-  req.file,
-  );
-  res
+      req.params.id,
+      req.body,
+      req.file,
+    );
+    res
       .status(200)
       .json({ success: true, message: "Usuário atualizado com sucesso", data });
   } catch (error) {
